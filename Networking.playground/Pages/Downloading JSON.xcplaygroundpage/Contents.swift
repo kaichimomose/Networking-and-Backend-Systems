@@ -32,7 +32,9 @@ let task = session.dataTask(with: request) { (data, response, error) in
     
     if let data = data {
         let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments)
-        print(json ?? "")
+        let dictionary = json as? [String:Any]
+        let title = dictionary!["title"]
+        print(title ?? "Empty")
     }
 }
 
@@ -78,20 +80,24 @@ task.resume()
 //: Lets define our JSON type as a dictionary of String to Any
 typealias JSON = [String: Any]
 
+//URL/url parameters
 var postReq = URLRequest(url: URL(string: "https://httpbin.org/post")!)
 
+//will be Body
 let jsonDictionary: JSON = ["user": ["first_name": "Eliel", "last_name": "Gordon"]]
 let jsonData = try? JSONSerialization.data(withJSONObject: jsonDictionary, options: JSONSerialization.WritingOptions.prettyPrinted)
 
+//Method
 postReq.httpMethod = "POST"
+//Body
 postReq.httpBody = jsonData
 
-session.dataTask(with: postReq) { (data, resp, err) in
-    if let data = data {
-        let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments)
-        print(json ?? "")
-    }
-}.resume()
+//session.dataTask(with: postReq) { (data, resp, err) in
+//    if let data = data {
+//        let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments)
+//        print(json ?? "")
+//    }
+//}.resume()
 
 
 /*:
@@ -108,23 +114,56 @@ enum Method: String {
     case delete = "DELETE"
 }
 
-let pokeUrl = URL(string: "http://pokeapi.co/api/v2/language/1/")!
+let pokeUrl = URL(string: "http://pokeapi.co/api/v2/language/6")!
 
 var pokeRequest = URLRequest(url: pokeUrl)
 pokeRequest.httpMethod = Method.get.rawValue
 
 let pokeSession = URLSession.shared
 
-let pokeTask = session.dataTask(with: pokeRequest) { (data, response, error) in
+let pokeTask = pokeSession.dataTask(with: pokeRequest) { (data, response, error) in
     if let data = data {
-        let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments)
-        print(json ?? "")
+        guard let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments) else {return}
+        let dictionary = json as? [String : Any]
+        // Get array of dictionaries
+        let namesArray = dictionary!["names"] as? [[String:Any]]
+        // Get first object of array and get the name key:value
+        let nameIndex = namesArray![0]["name"]
+        print(nameIndex ?? "empty")
     }
-    
 }
 
 
 pokeTask.resume()
+
+let spaceXUrl = URL(string: "https://api.spacexdata.com/v1/vehicles/dragon")!
+
+var spaceXRequest = URLRequest(url: spaceXUrl)
+spaceXRequest.httpMethod = Method.get.rawValue
+
+let spaceXSession = URLSession.shared
+
+let spaceXTask = spaceXSession.dataTask(with: spaceXRequest) { (data, response, error) in
+    if let data = data {
+        guard let json = try? JSONSerialization.jsonObject(with: data, options: .allowFragments) else {return}
+//        print(json)
+        let dictionary = json as? [String : Any]
+        // Get the name key:value
+        let name = dictionary!["name"]
+        print(name ?? "empty")
+        let variations = dictionary!["variations"] as? [String:Any]
+        let cargo = variations!["cargo"] as? [String:Any]
+        let details = cargo!["details"]
+        print(details ?? "empty")
+//        // Get first object of array and get the name key:value
+//        let nameIndex = namesArray![0]["name"]
+//        print(nameIndex ?? "empty")
+    }
+}
+
+
+spaceXTask.resume()
+
 /*: ## Resources
  [URLSessions](https://www.raywenderlich.com/158106/urlsession-tutorial-getting-started)
  */
