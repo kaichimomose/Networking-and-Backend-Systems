@@ -22,10 +22,10 @@ struct Anime {
     let title: String
     let thumbnail: URL
     
-    init(title: String, thumbnail: URL) {
-        self.title = title
-        self.thumbnail = thumbnail
-    }
+//    init(title: String, thumbnail: URL) {
+//        self.title = title
+//        self.thumbnail = thumbnail
+//    }
 }
 
 extension Anime: Decodable {
@@ -42,10 +42,13 @@ extension Anime: Decodable {
         // define our keyed container
         let container = try decoder.container(keyedBy: Keys.self)
         
-        let title: String = try container.decode(String.self, forKey: .title) // extracting the data
-        let thumbnail: URL = try container.decode(URL.self, forKey: .thumbnail)
+        title = try container.decode(String.self, forKey: .title) // extracting the data
+        thumbnail = try container.decode(URL.self, forKey: .thumbnail)
         
-        self.init(title: title, thumbnail: thumbnail)
+//        let title: String = try container.decode(String.self, forKey: .title) // extracting the data
+//        let thumbnail: URL = try container.decode(URL.self, forKey: .thumbnail)
+        
+//        self.init(title: title, thumbnail: thumbnail)
     }
 }
 

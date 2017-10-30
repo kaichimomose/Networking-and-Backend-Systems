@@ -6,6 +6,10 @@ import PlaygroundSupport
 /*:
  Containers and Keys
  */
+struct AnimeList: Decodable {
+    let data: [Anime]
+}
+
 struct Anime {
     let title: String
     let thumbnail: URL
@@ -50,7 +54,7 @@ extension Anime: Decodable {
         // Container holding title
         let titlesEnContainer = try attributesContainer.nestedContainer(keyedBy: TitleKeys.self, forKey: .titles)
         
-        let title: String = try titlesEnContainer.decodeIfPresent(String.self, forKey: .en) ?? ""
+        let title: String = try titlesEnContainer.decodeIfPresent(String.self, forKey: .en) ?? "" //decodeIfPresent -> optional
         
         // Id - top level in data array
         let id: String = try container.decode(String.self, forKey: .id)
@@ -62,10 +66,6 @@ extension Anime: Decodable {
 
         self.init(title: title, thumbnail: thumbnail, id: id)
     }
-}
-
-struct AnimeList: Decodable {
-    let data: [Anime]
 }
 
 typealias JSON = [String: Any]
@@ -82,7 +82,7 @@ class Networking {
     let session = URLSession.shared
     let baseURL = URL(string: "https://kitsu.io/api/edge/anime")!
     
-    func getAnime(id: String, completion: @escaping ([Anime]) -> Void) {
+    func getAnime(id: String, completion: @escaping (Anime) -> Void) {
         
         let request = URLRequest(url: baseURL)
         
@@ -92,15 +92,19 @@ class Networking {
                 let animeList = try? JSONDecoder().decode(AnimeList.self, from: data)
                 
                 guard let animes = animeList?.data else {return}
-                completion(animes)
+                for anime in animes{
+                    if anime.id == id {
+                        completion(anime)
+                    }
+                }
             }
         }.resume()
     }
 }
 
 let networking = Networking()
-networking.getAnime(id: "1") { (res) in
-    print(res)
+networking.getAnime(id: "1") { (anime: Anime) in
+    print(anime)
 }
 
 /*:
