@@ -1,7 +1,13 @@
 import pdb
 import json
 from flask import Flask, request
+from pymongo import MongoClient
+# from bson import Binary, Code
+from bson.json_util import dumps
+from util import JSONEncoder
 app = Flask(__name__)
+mongo = MongoClient('localhost', 27017)
+app.db = mongo.test
 pets_list = []
 
 pet_1 = {"kind": "Ferret", "color": "glay"}
@@ -17,7 +23,7 @@ def hello_world():
 
 @app.route('/user')
 def person_route():
-    person = {"name": "Eliel", 'age': 23}
+    person = {"name": "Kaichi", 'age': 24}
     json_person = json.dumps(person)
 
     return (json_person, 200, None)
@@ -40,13 +46,43 @@ def my_favorite_pets():
     return (json_pets, 200, None)
 
 
-@app.route('/newpets', methods=['POST'])
+@app.route('/newpets', methods=['GET', 'POST'])
 def add_pets():
-    # pdb.set_trace()
-    body = json.loads(request.data)
-    return pets_list
+    if request.method == 'POST':
+        json_pets = json.dumps(request.json)
+        return (json_pets, 201, None)
 
+
+@app.route('/post_users', methods=['POST'])
+def post_users():
+    # Users from POST request
+    users_dict = request.json
+    # Our users collection
+    users_collection = app.db.users
+
+    # Inserting one user into our users collection
+    result = users_collection.insert_one(
+        users_dict
+    )
+
+    json_result = dumps(users_dict)
+    # response_json = json.dumps(result)
+
+    return (json_result, 201, None)
+
+
+@app.route('/users', methods=['GET'])
+def get_user():
+    name = request.args.get('name', type=str)
+    users_collection = app.db.users
+    result = users_collection.find_one(
+        {'name': name}
+    )
+
+    response_json = JSONEncoder().encode(result)
+
+    # response_json = dumps(result)
+    return (response_json, 200, None)
 
 if __name__ == '__main__':
-    app.run()
-    app.config["Debug"] = True
+    app.run(debug=True)
