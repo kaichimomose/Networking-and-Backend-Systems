@@ -61,12 +61,12 @@ def post_users():
     users_collection = app.db.users
 
     # Inserting one user into our users collection
-    result = users_collection.insert_one(
+    users_collection.insert_one(
         users_dict
     )
 
-    json_result = dumps(users_dict)
-    # response_json = json.dumps(result)
+    json_result = JSONEncoder().encode(users_dict)
+    # json_result = dumps(result)
 
     return (json_result, 201, None)
 
