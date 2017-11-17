@@ -98,7 +98,7 @@ def output_json(data, code, headers=None):
     return resp
 
 
-api.add_resource(Users, '/users')
+api.add_resource(Users, '/users/')
 api.add_resource(Trip, '/trip')
 
 
