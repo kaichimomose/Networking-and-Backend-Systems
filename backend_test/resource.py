@@ -1,58 +1,90 @@
 import json
 import pdb
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, g
 from pymongo import MongoClient, ReturnDocument
 from bson import Binary, Code
 from bson.json_util import dumps
 from flask_restful import Resource, Api
 
+import bcrypt
+
 app = Flask(__name__)
-mongo = MongoClient('localhost', 27017)
-app.db = mongo.trip_planer
+mongo = MongoClient('mongodb://kaichi:password@ds155325.mlab.com:55325/trip_planner_production')
+app.db = mongo.trip_planner_production
 api = Api(app)
 
+app.bcrypt_rounds = 12
+
+def validate_auth(user, password):
+    user_collection = app.db.users
+    user = user_collection.find_one({'username': user})
+
+    if user is None:
+        return False
+    else:
+        # check if the hash we generate based on auth matches stored hash
+        encodedPassword = password.encode('utf-8')
+        if bcrypt.hashpw(encodedPassword, user['password']) == user['password']:
+            g.setdefault('user', user)
+            return True
+        else:
+            return False
+
+def authenticated_request(func):
+    def wrapper(*args, **kwargs):
+        auth = request.authorization
+
+        if not auth or not validate_auth(auth.username, auth.password):
+            return ({'error': 'Basic Auth Required.'}, 401, None)
+
+        return func(*args, **kwargs)
+
+    return wrapper
 
 class Users(Resource):
 
+    def __init__(self):
+        self.users_collection = app.db.users
+
     def post(self):
-        new_user = request.json
-        users_collection = app.db.users
-        result = users_collection.insert_one(new_user)
+        json_body = request.json
+        password = json_body['password']
+
+        encodedPassword = password.encode('utf-8')
+        hashed = bcrypt.hashpw(encodedPassword, bcrypt.gensalt(app.bcrypt_rounds))
+        # hashed = hashed.decode()
+        pdb.set_trace()
+
+        json_body['password'] = hashed
+
+        result = self.users_collection.insert_one(json_body)
         user = users_collection.find_one({"_id": result.inserted_id})
         return user
 
+    @authenticated_request
     def get(self):
-        user = request.args.get('user', type=str)
-        users_collection = app.db.users
-        user = users_collection.find_one({"user": user})
+        # user = g.get('user', None)
+        # user.pop('password')
+        username = request.authorization.username
+        user = self.users_collection.find_one({"username": username})
         # pdb.set_trace()
-        if user is None:
-            response = jsonify(data=[])
-            response.status_code = 404
-            return response
-        else:
-            return user
+        return user
 
+    @authenticated_request
     def patch(self):
-        user_name = request.args.get('user', type=str)
-        new_user = request.args.get('new_user', type=str)
-        users_collection = app.db.users
-        user = users_collection.find_one_and_update(
-            {"user": user_name},
+        username = request.authorization.username
+        new_user = request.json["new_username"]
+        user = self.users_collection.find_one_and_update(
+            {"user": username},
             {"$set": {"user": new_user}},
             return_document=ReturnDocument.AFTER
         )
-        if user is None:
-            response = jsonify(data=[])
-            response.status_code = 404
-            return response
-        else:
-            return user
+        return user
 
+    @authenticated_request
     def delete(self):
-        user_name = request.args.get('name')
-        users_collection = app.db.users
-        users_collection.remove({'name': user_name})
+        username = request.authorization.username
+        self.users_collection.remove({'user': username})
 
 
 class Trip(Resource):
@@ -98,8 +130,9 @@ def output_json(data, code, headers=None):
     return resp
 
 
-api.add_resource(Users, '/users/')
+api.add_resource(Users, '/users')
 api.add_resource(Trip, '/trip')
+#api.add_resource(Trip, '/trip', "/<trip_id>")
 
 
 if __name__ == '__main__':
