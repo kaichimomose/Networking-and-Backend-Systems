@@ -1,88 +1,141 @@
-import pdb
 import json
-from flask import Flask, request
-from pymongo import MongoClient
-# from bson import Binary, Code
+import pdb
+from flask import Flask, request, jsonify, make_response, g
+from pymongo import MongoClient, ReturnDocument
+from bson import Binary, Code
 from bson.json_util import dumps
-from util import JSONEncoder
+from flask_restful import Resource, Api
+
+import bcrypt
+
 app = Flask(__name__)
-mongo = MongoClient('localhost', 27017)
-app.db = mongo.test
-pets_list = []
+mongo = MongoClient('mongodb://kaichi:password@ds155325.mlab.com:55325/trip_planner_production')
+app.db = mongo.trip_planner_production
+api = Api(app)
 
-pet_1 = {"kind": "Ferret", "color": "glay"}
-pet_2 = {"kind": "Rabbit", "color": "white"}
-pets_list.append(pet_1)
-pets_list.append(pet_2)
+app.bcrypt_rounds = 12
+
+def validate_auth(user, password):
+    user_collection = app.db.users
+    user = user_collection.find_one({'username': user})
+
+    if user is None:
+        return False
+    else:
+        # check if the hash we generate based on auth matches stored hash
+        encodedPassword = password.encode('utf-8')
+        if bcrypt.hashpw(encodedPassword, user['password']) == user['password']:
+            g.setdefault('user', user)
+            return True
+        else:
+            return False
+
+def authenticated_request(func):
+    def wrapper(*args, **kwargs):
+        auth = request.authorization
+
+        if not auth or not validate_auth(auth.username, auth.password):
+            return ({'error': 'Basic Auth Required.'}, 401, None)
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+class Users(Resource):
+
+    def __init__(self):
+        self.users_collection = app.db.users
+
+    def post(self):
+        json_body = request.json
+        password = json_body['password']
+
+        encodedPassword = password.encode('utf-8')
+        hashed = bcrypt.hashpw(encodedPassword, bcrypt.gensalt(app.bcrypt_rounds))
+        # hashed = hashed.decode()
+        pdb.set_trace()
+
+        json_body['password'] = hashed
+
+        result = self.users_collection.insert_one(json_body)
+        user = users_collection.find_one({"_id": result.inserted_id})
+        return user
+
+    @authenticated_request
+    def get(self):
+        # user = g.get('user', None)
+        # user.pop('password')
+        username = request.authorization.username
+        user = self.users_collection.find_one({"username": username})
+        # pdb.set_trace()
+        return user
+
+    @authenticated_request
+    def patch(self):
+        username = request.authorization.username
+        new_user = request.json["new_username"]
+        user = self.users_collection.find_one_and_update(
+            {"user": username},
+            {"$set": {"user": new_user}},
+            return_document=ReturnDocument.AFTER
+        )
+        return user
+
+    @authenticated_request
+    def delete(self):
+        username = request.authorization.username
+        self.users_collection.remove({'user': username})
 
 
-@app.route('/comments')
-def hello_world():
-    return 'Hello World!'
+class Trip(Resource):
+
+    def __init__(self):
+        self.trip_collection = app.db.trip
+
+    def post(self):
+        new_trip = request.json
+        # trip_collection = app.db.trip
+        result = self.trip_collection.insert_one(new_trip)
+        trip = self.trip_collection.find_one({"_id": result.inserted_id})
+        return trip
+
+    def get(self):
+        trip_name = request.args.get('trip_name')
+        # trip_collection = app.db.trip
+        trip = self.trip_collection.find_one({'trip_name': trip_name})
+        return trip
+
+    def patch(self):
+        old_trip = request.args.get('old_trip')
+        # trip_collection = app.db.trip
+        new_trip = request.args.get('new_trip')
+        trip = self.trip_collection.find_one_and_update(
+            {'trip_name': old_trip},
+            {"$set": {'trip_name': new_trip}},
+            return_document=ReturnDocument.AFTER
+        )
+        return trip
+
+    def delete(self):
+        trip_name = request.args.get('trip_name')
+        # trip_collection = app.db.trip
+        self.trip_collection.remove({'trip_name': trip_name})
 
 
-@app.route('/user')
-def person_route():
-    person = {"name": "Kaichi", 'age': 24}
-    json_person = json.dumps(person)
 
-    return (json_person, 200, None)
-
-
-@app.route('/my_page')
-def my_page_route():
-    return "Hi, My name is Kaichi. I am a student at Make School"
+@api.representation('application/json')
+def output_json(data, code, headers=None):
+    resp = make_response(dumps(data), code)
+    resp.headers.extend(headers or {})
+    return resp
 
 
-@app.route('/pets')
-def my_favorite_pets():
-    # pet_1 = {"kind": "Ferret", "color": "glay"}
-    # pet_2 = {"kind": "Rabbit", "color": "white"}
-    # pets_list.append(pet_1)
-    # pets_list.append(pet_2)
-    json_pets = json.dumps(pets_list)
-    # pdb.set_trace()
+api.add_resource(Users, '/users')
+api.add_resource(Trip, '/trip')
+#api.add_resource(Trip, '/trip', "/<trip_id>")
 
-    return (json_pets, 200, None)
-
-
-@app.route('/newpets', methods=['GET', 'POST'])
-def add_pets():
-    if request.method == 'POST':
-        json_pets = json.dumps(request.json)
-        return (json_pets, 201, None)
-
-
-@app.route('/post_users', methods=['POST'])
-def post_users():
-    # Users from POST request
-    users_dict = request.json
-    # Our users collection
-    users_collection = app.db.users
-
-    # Inserting one user into our users collection
-    users_collection.insert_one(
-        users_dict
-    )
-
-    json_result = JSONEncoder().encode(users_dict)
-    # json_result = dumps(result)
-
-    return (json_result, 201, None)
-
-
-@app.route('/users', methods=['GET'])
-def get_user():
-    name = request.args.get('name', type=str)
-    users_collection = app.db.users
-    result = users_collection.find_one(
-        {'name': name}
-    )
-
-    response_json = JSONEncoder().encode(result)
-
-    # response_json = dumps(result)
-    return (response_json, 200, None)
 
 if __name__ == '__main__':
+    # Turn this on in debug mode to get detailled information about request related exceptions: http://flask.pocoo.org/docs/0.10/config/
+    app.config['TRAP_BAD_REQUEST_ERRORS'] = True
     app.run(debug=True)
