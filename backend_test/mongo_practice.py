@@ -5,7 +5,7 @@ from pymongo import MongoClient
 # from bson import Binary, Code
 from bson.json_util import dumps
 from util import JSONEncoder
-app = Flask(__name__)
+# app = Flask(__name__)
 mongo = MongoClient('localhost', 27017)
 app.db = mongo.test
 pets_list = []
