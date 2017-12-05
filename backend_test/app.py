@@ -9,8 +9,10 @@ from flask_restful import Resource, Api
 import bcrypt
 
 app = Flask(__name__)
-mongo = MongoClient('mongodb://kaichi:password@ds155325.mlab.com:55325/trip_planner_production')
-app.db = mongo.trip_planner_production
+# mongo = MongoClient('mongodb://kaichi:password@ds155325.mlab.com:55325/trip_planner_production')
+mongo = MongoClient('mongodb://localhost:27017/')
+
+app.db = mongo.trip_planer
 api = Api(app)
 
 app.bcrypt_rounds = 12
@@ -58,7 +60,7 @@ class Users(Resource):
         json_body['password'] = hashed
 
         result = self.users_collection.insert_one(json_body)
-        user = users_collection.find_one({"_id": result.inserted_id})
+        user = self.users_collection.find_one({"_id": result.inserted_id})
         return user
 
     @authenticated_request
