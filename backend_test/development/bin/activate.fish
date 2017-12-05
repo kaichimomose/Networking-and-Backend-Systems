@@ -36,7 +36,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/Mac/code/makeSchool/mob2/tripPlanner/trip-planner/development"
+set -gx VIRTUAL_ENV "/Users/kaichimomose/Desktop/MOB-2-Networking-and-Backend-Systems/backend_test/development"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH

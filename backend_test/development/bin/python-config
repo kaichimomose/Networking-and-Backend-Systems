@@ -1,4 +1,4 @@
-#!/Users/Mac/code/makeSchool/mob2/tripPlanner/trip-planner/development/bin/python
+#!/Users/kaichimomose/Desktop/MOB-2-Networking-and-Backend-Systems/backend_test/development/bin/python
 
 import sys
 import getopt
